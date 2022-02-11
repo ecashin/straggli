@@ -44,7 +44,7 @@ struct Walker {
     acceleration_hold: i32,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 struct WalkerState {
     acceleration: f32,
     velocity: f32,
@@ -75,16 +75,16 @@ impl Walker {
     fn new() -> Self {
         println!("in Walker::new");
         Walker {
-            position: Bounds::new(-100., -1.),
-            acceleration: Bounds::new(-0.4, 0.4),
-            velocity: Bounds::new(-5., 5.),
+            position: Bounds::new(-8000., -1.),
+            acceleration: Bounds::new(-1., 1.),
+            velocity: Bounds::new(-50., 50.),
             acceleration_hold: 10,
         }
     }
 
     fn bounce(&self, current: WalkerState) -> (f32, f32) {
         let next_pos = current.position + current.velocity;
-        let next_velo = if !self.position.contains(next_pos) {
+        let next_velo = if self.position.contains(next_pos) {
             self.velocity.clamp(current.velocity + current.acceleration)
         } else {
             -1. * current.velocity
@@ -218,3 +218,23 @@ impl Plugin for JiglAgain {
 }
 
 lv2_descriptors!(JiglAgain);
+
+#[cfg(test)]
+mod tests {
+    use super::{Walker, WalkerState};
+
+    #[test]
+    fn walker() {
+        let w = Walker::new();
+        println!("{:?}", w);
+        let s = WalkerState::new_from_walker(&w);
+        println!("{:?}", s);
+        let mut next_s = w.step(s);
+        println!("{:?}", next_s);
+        assert_ne!(s, next_s);
+        for _ in 1..w.acceleration_hold * 2 {
+            next_s = w.step(next_s);
+            println!("{:?}", next_s);
+        }
+    }
+}
