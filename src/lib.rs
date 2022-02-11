@@ -123,7 +123,7 @@ impl Walker {
         })
     }
 
-    fn get(&self, s: &WalkerState, buf: &Vec<f32>, pos: usize) -> f32 {
+    fn get(&self, s: &WalkerState, buf: &[f32], pos: usize) -> f32 {
         // this position can be negative
         let position = pos as i64 + s.position as i64;
         // adding buffer length doesn't change value modulo buffer length
@@ -134,6 +134,7 @@ impl Walker {
 
 #[uri("https://github.com/ecashin/jiglagain")]
 struct JiglAgain {
+    sample_rate: usize,
     walkers: [Walker; 2],
     walker_states: [WalkerState; 2],
     buffers: [Vec<f32>; 2],
@@ -147,9 +148,15 @@ struct JiglAgainPorts {
     input_right: InputPort<InPlaceAudio>,
     output_left: OutputPort<InPlaceAudio>,
     output_right: OutputPort<InPlaceAudio>,
-    pos_low: InputPort<Control>,
-    // pos_high: InputPort<Control>,
+    max_delay_ms: InputPort<Control>,
     wet_mix: InputPort<Control>,
+}
+
+impl JiglAgain {
+    fn pos_from_delay_ms(&self, max_delay_ms: f32) -> f32 {
+        let delay_seconds = max_delay_ms / 1000.;
+        -delay_seconds * (self.sample_rate as f32)
+    }
 }
 
 impl Plugin for JiglAgain {
@@ -165,6 +172,7 @@ impl Plugin for JiglAgain {
             WalkerState::new_from_walker(&walkers[1]),
         ];
         Some(Self {
+            sample_rate: sr,
             buffers: [
                 vec![0.; sr * MAX_DELAY_IN_SECONDS],
                 vec![0.; sr * MAX_DELAY_IN_SECONDS],
@@ -184,9 +192,8 @@ impl Plugin for JiglAgain {
             0.0
         };
         let wet_mix = *(ports.wet_mix) / 100.;
-        let pos_low = *(ports.pos_low);
+        let pos_low = self.pos_from_delay_ms(*(ports.max_delay_ms));
         let pos_high = self.walkers[0].position.high;
-        assert_eq!(pos_high, self.walkers[1].position.high);
         if pos_low < pos_high {
             self.walkers[0].position.low = pos_low;
             self.walkers[1].position.high = pos_high;
