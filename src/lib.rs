@@ -4,121 +4,138 @@ use urid::*;
 
 const MAX_DELAY_IN_SECONDS: usize = 2;
 
+#[derive(Debug)]
 struct Bounds {
-    low: f64,
-    high: f64,
+    low: f32,
+    high: f32,
 }
 
 impl Bounds {
-    fn new(low: f64, high: f64) -> Self {
+    fn new(low: f32, high: f32) -> Self {
         Bounds { low, high }
     }
 
-    fn mid_point(&self) -> f64 {
+    fn mid_point(&self) -> f32 {
         (self.low + self.high) / 2.
     }
 
-    fn contains(&self, x: f64) -> bool {
-        if x < self.low {
-            false
-        } else if x > self.high {
-            false
-        } else {
-            true
-        }
+    fn contains(&self, x: f32) -> bool {
+        x >= self.low && x <= self.high
     }
 
-    fn span(&self) -> f64 {
+    fn span(&self) -> f32 {
         self.high - self.low
     }
 
-    fn clamp(&self, x: f64) -> f64 {
+    fn clamp(&self, x: f32) -> f32 {
         num::clamp(x, self.low, self.high)
     }
 
-    fn rand_inside(&self) -> f64 {
+    fn rand_inside(&self) -> f32 {
         rand::thread_rng().gen_range(self.low..self.high)
     }
 }
 
+#[derive(Debug)]
 struct Walker {
-    Position: Bounds,
-    Acceleration: Bounds,
-    Velocity: Bounds,
-    AccelerationHold: i64,
+    position: Bounds,
+    acceleration: Bounds,
+    velocity: Bounds,
+    acceleration_hold: i32,
 }
 
 #[derive(Copy, Clone)]
 struct WalkerState {
-    Acceleration: f64,
-    Velocity: f64,
-    Position: f64,
-    AccelerationTTL: i64,
+    acceleration: f32,
+    velocity: f32,
+    position: f32,
+    acceleration_ttl: i32,
 }
 
 impl WalkerState {
+    fn new_from_walker(walker: &Walker) -> WalkerState {
+        WalkerState {
+            acceleration: walker.acceleration.rand_inside(),
+            velocity: walker.velocity.rand_inside(),
+            position: walker.position.rand_inside(),
+            acceleration_ttl: walker.acceleration_hold,
+        }
+    }
+
     fn accelerating_left(&self) -> bool {
-        self.Velocity < 0. && self.Acceleration < 0.
+        self.velocity < 0. && self.acceleration < 0.
     }
 
     fn accelerating_right(&self) -> bool {
-        self.Velocity > 0. && self.Acceleration > 0.
+        self.velocity > 0. && self.acceleration > 0.
     }
 }
 
 impl Walker {
     fn new() -> Self {
+        println!("in Walker::new");
         Walker {
-            Position: Bounds::new(-100., -1.),
-            Acceleration: Bounds::new(-0.4, 0.4),
-            Velocity: Bounds::new(-5., 5.),
-            AccelerationHold: 10,
+            position: Bounds::new(-100., -1.),
+            acceleration: Bounds::new(-0.4, 0.4),
+            velocity: Bounds::new(-5., 5.),
+            acceleration_hold: 10,
         }
     }
 
-    fn bounce(&self, current: WalkerState) -> (f64, f64) {
-        let next_pos = current.Position + current.Velocity;
-        let next_velo = if !self.Position.contains(next_pos) {
-            self.Velocity.clamp(current.Velocity + current.Acceleration)
+    fn bounce(&self, current: WalkerState) -> (f32, f32) {
+        let next_pos = current.position + current.velocity;
+        let next_velo = if !self.position.contains(next_pos) {
+            self.velocity.clamp(current.velocity + current.acceleration)
         } else {
-            -1. * current.Velocity
+            -1. * current.velocity
         };
-        (self.Position.clamp(next_pos), next_velo)
+        (self.position.clamp(next_pos), next_velo)
     }
 
     fn shy(&self, current: WalkerState) -> WalkerState {
-        let next_acc = if current.accelerating_left() {
-            current.Acceleration * (current.Position - self.Position.low) / self.Position.span()
-        } else if current.accelerating_right() {
-            current.Acceleration * (self.Position.high - current.Position) / self.Position.span()
+        let next_acc = if current.accelerating_left()
+            && current.position < self.position.mid_point()
+        {
+            current.acceleration * (current.position - self.position.low) / self.position.span()
+        } else if current.accelerating_right() && current.position > self.position.mid_point() {
+            current.acceleration * (self.position.high - current.position) / self.position.span()
         } else {
-            current.Acceleration
+            current.acceleration
         };
         WalkerState {
-            Acceleration: next_acc,
+            acceleration: next_acc,
             ..current
         }
     }
 
     fn step(&self, current: WalkerState) -> WalkerState {
         let (next_pos, next_velo) = self.bounce(current);
-        let (next_acc, next_acc_ttl) = if current.AccelerationTTL > 0 {
-            (current.Acceleration, current.AccelerationTTL - 1)
+        let (next_acc, next_acc_ttl) = if current.acceleration_ttl > 0 {
+            (current.acceleration, current.acceleration_ttl - 1)
         } else {
-            (self.Acceleration.rand_inside(), self.AccelerationHold)
+            (self.acceleration.rand_inside(), self.acceleration_hold)
         };
         self.shy(WalkerState {
-            Acceleration: next_acc,
-            Velocity: next_velo,
-            Position: next_pos,
-            AccelerationTTL: next_acc_ttl,
+            acceleration: next_acc,
+            velocity: next_velo,
+            position: next_pos,
+            acceleration_ttl: next_acc_ttl,
         })
+    }
+
+    fn get(&self, s: &WalkerState, buf: &Vec<f32>, pos: usize) -> f32 {
+        // this position can be negative
+        let position = pos as i64 + s.position as i64;
+        // adding buffer length doesn't change value modulo buffer length
+        let positive_position = position + buf.len() as i64;
+        buf[positive_position as usize % buf.len()]
     }
 }
 
-#[uri("https://github.com/RustAudio/rust-lv2/tree/master/docs/amp")]
+#[uri("https://github.com/ecashin/jiglagain")]
 struct JiglAgain {
     walkers: [Walker; 2],
+    walker_states: [WalkerState; 2],
     buffers: [Vec<f32>; 2],
     buf_pos: usize,
 }
@@ -130,6 +147,9 @@ struct JiglAgainPorts {
     input_right: InputPort<InPlaceAudio>,
     output_left: OutputPort<InPlaceAudio>,
     output_right: OutputPort<InPlaceAudio>,
+    pos_low: InputPort<Control>,
+    // pos_high: InputPort<Control>,
+    wet_mix: InputPort<Control>,
 }
 
 impl Plugin for JiglAgain {
@@ -137,36 +157,53 @@ impl Plugin for JiglAgain {
     type InitFeatures = ();
     type AudioFeatures = ();
     fn new(plugin_info: &PluginInfo, _features: &mut Self::InitFeatures) -> Option<Self> {
+        println!("in JiglAgain Plugin new");
         let sr = plugin_info.sample_rate() as usize;
+        let walkers = [Walker::new(), Walker::new()];
+        let walker_states = [
+            WalkerState::new_from_walker(&walkers[0]),
+            WalkerState::new_from_walker(&walkers[1]),
+        ];
         Some(Self {
             buffers: [
                 vec![0.; sr * MAX_DELAY_IN_SECONDS],
                 vec![0.; sr * MAX_DELAY_IN_SECONDS],
             ],
-            walkers: [Walker::new(), Walker::new()],
+            walkers,
+            walker_states,
             buf_pos: 0,
         })
     }
-    // What implementation details elided ?
 
     fn run(&mut self, ports: &mut JiglAgainPorts, _: &mut (), _: u32) {
-        let coef = if *(ports.gain) > -90.0 {
+        let input = Iterator::zip(ports.input_left.iter(), ports.input_right.iter());
+        let output = Iterator::zip(ports.output_left.iter(), ports.output_right.iter());
+        let gain = if *(ports.gain) > -90.0 {
             10.0_f32.powf(*(ports.gain) * 0.05)
         } else {
             0.0
         };
-
-        let input = Iterator::zip(ports.input_left.iter(), ports.input_right.iter());
-        let output = Iterator::zip(ports.output_left.iter(), ports.output_right.iter());
+        let wet_mix = *(ports.wet_mix) / 100.;
+        let pos_low = *(ports.pos_low);
+        let pos_high = self.walkers[0].position.high;
+        assert_eq!(pos_high, self.walkers[1].position.high);
+        if pos_low < pos_high {
+            self.walkers[0].position.low = pos_low;
+            self.walkers[1].position.high = pos_high;
+        }
         for ((in_left, in_right), (out_left, out_right)) in Iterator::zip(input, output) {
             let a = in_left.get();
             let b = in_right.get();
+            let aa = self.walkers[0].get(&self.walker_states[0], &self.buffers[0], self.buf_pos);
+            let bb = self.walkers[1].get(&self.walker_states[1], &self.buffers[1], self.buf_pos);
+            self.walker_states[0] = self.walkers[0].step(self.walker_states[0]);
+            self.walker_states[1] = self.walkers[1].step(self.walker_states[1]);
             self.buffers[0][self.buf_pos] = a;
             self.buffers[1][self.buf_pos] = b;
-            out_left.set(a * coef);
-            out_right.set(b * coef);
+            out_left.set((a * (1. - wet_mix) + (aa * wet_mix)) * 0.5 * gain);
+            out_right.set((b * (1. - wet_mix) + (bb * wet_mix)) * 0.5 * gain);
             self.buf_pos += 1;
-            if self.buf_pos > self.buffers[0].len() {
+            if self.buf_pos == self.buffers[0].len() {
                 self.buf_pos = 0;
             }
         }

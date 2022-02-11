@@ -3,7 +3,7 @@
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix units: <http://lv2plug.in/ns/extensions/units#> .
-<https://github.com/RustAudio/rust-lv2/tree/master/docs/amp>
+<https://github.com/ecashin/jiglagain>
         a lv2:Plugin ,
                 lv2:AmplifierPlugin ;
 lv2:project <https://github.com/ecashin/jiglagain> ;
@@ -57,4 +57,22 @@ doap:license <https://opensource.org/licenses/BSD-3-Clause> ;
                 lv2:index 4 ;
                 lv2:symbol "output_right" ;
                 lv2:name "OutputRight"
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 5 ;
+                lv2:symbol "pos_low" ;
+                lv2:name "PosLow" ;
+                lv2:default -100.0 ;
+                lv2:minimum -1000.0 ;
+                lv2:maximum -2.0
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 6 ;
+                lv2:symbol "wet_mix" ;
+                lv2:name "WetMix" ;
+                lv2:default 90.0 ;
+                lv2:minimum 0.0 ;
+                lv2:maximum 100.0
         ] .
