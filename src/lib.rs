@@ -132,8 +132,8 @@ impl Walker {
     }
 }
 
-#[uri("https://github.com/ecashin/jiglagain")]
-struct JiglAgain {
+#[uri("https://github.com/ecashin/straggli")]
+struct Straggli {
     sample_rate: usize,
     walkers: [Walker; 2],
     walker_states: [WalkerState; 2],
@@ -142,7 +142,7 @@ struct JiglAgain {
 }
 
 #[derive(PortCollection)]
-struct JiglAgainPorts {
+struct StraggliPorts {
     gain: InputPort<Control>,
     input_left: InputPort<InPlaceAudio>,
     input_right: InputPort<InPlaceAudio>,
@@ -154,19 +154,18 @@ struct JiglAgainPorts {
     wet_mix: InputPort<Control>,
 }
 
-impl JiglAgain {
+impl Straggli {
     fn pos_from_delay_ms(&self, max_delay_ms: f32) -> f32 {
         let delay_seconds = max_delay_ms / 1000.;
         -delay_seconds * (self.sample_rate as f32)
     }
 }
 
-impl Plugin for JiglAgain {
-    type Ports = JiglAgainPorts;
+impl Plugin for Straggli {
+    type Ports = StraggliPorts;
     type InitFeatures = ();
     type AudioFeatures = ();
     fn new(plugin_info: &PluginInfo, _features: &mut Self::InitFeatures) -> Option<Self> {
-        println!("in JiglAgain Plugin new");
         let sr = plugin_info.sample_rate() as usize;
         let walkers = [Walker::new(), Walker::new()];
         let walker_states = [
@@ -185,7 +184,7 @@ impl Plugin for JiglAgain {
         })
     }
 
-    fn run(&mut self, ports: &mut JiglAgainPorts, _: &mut (), _: u32) {
+    fn run(&mut self, ports: &mut StraggliPorts, _: &mut (), _: u32) {
         let input = Iterator::zip(ports.input_left.iter(), ports.input_right.iter());
         let output = Iterator::zip(ports.output_left.iter(), ports.output_right.iter());
         let gain = if *(ports.gain) > -90.0 {
@@ -231,7 +230,7 @@ impl Plugin for JiglAgain {
     }
 }
 
-lv2_descriptors!(JiglAgain);
+lv2_descriptors!(Straggli);
 
 #[cfg(test)]
 mod tests {
