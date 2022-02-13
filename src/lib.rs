@@ -149,6 +149,8 @@ struct JiglAgainPorts {
     output_left: OutputPort<InPlaceAudio>,
     output_right: OutputPort<InPlaceAudio>,
     max_delay_ms: InputPort<Control>,
+    max_abs_acc: InputPort<Control>,
+    max_abs_velo: InputPort<Control>,
     wet_mix: InputPort<Control>,
 }
 
@@ -198,6 +200,18 @@ impl Plugin for JiglAgain {
             self.walkers[0].position.low = pos_low;
             self.walkers[1].position.high = pos_high;
         }
+
+        let acc = *(ports.max_abs_acc);
+        self.walkers[0].acceleration.low = -acc;
+        self.walkers[1].acceleration.low = -acc;
+        self.walkers[0].acceleration.high = acc;
+        self.walkers[1].acceleration.high = acc;
+        let velo = *(ports.max_abs_velo);
+        self.walkers[0].velocity.low = -velo;
+        self.walkers[1].velocity.low = -velo;
+        self.walkers[0].velocity.high = velo;
+        self.walkers[1].velocity.high = velo;
+
         for ((in_left, in_right), (out_left, out_right)) in Iterator::zip(input, output) {
             let a = in_left.get();
             let b = in_right.get();

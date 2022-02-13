@@ -1,8 +1,16 @@
 @prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix units: <http://lv2plug.in/ns/extensions/units#> .
+
+<http://gareus.org/rgareus#me>
+        a foaf:Person ;
+        foaf:name "Ed Cashin" ;
+        foaf:mbox <mailto:ed.cashin@acm.org> ;
+        foaf:homepage <http://noserose.net/> .
+
 <https://github.com/ecashin/jiglagain>
         a lv2:Plugin ,
                 lv2:AmplifierPlugin ;
@@ -70,9 +78,29 @@ doap:license <https://opensource.org/licenses/BSD-3-Clause> ;
                 a lv2:InputPort ,
                 lv2:ControlPort ;
                 lv2:index 6 ;
+                lv2:symbol "max_abs_acc" ;
+                lv2:name "MaxAbsAcc" ;
+                lv2:default 1.0 ;
+                lv2:minimum 0.001 ;
+                lv2:maximum 100.0
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 7 ;
+                lv2:symbol "max_abs_velo" ;
+                lv2:name "MaxAbsVelo" ;
+                lv2:default 50.0 ;
+                lv2:minimum 1.0 ;
+                lv2:maximum 1999.0
+        ] , [
+                a lv2:InputPort ,
+                lv2:ControlPort ;
+                lv2:index 8 ;
                 lv2:symbol "wet_mix" ;
                 lv2:name "WetMix" ;
                 lv2:default 90.0 ;
                 lv2:minimum 0.0 ;
                 lv2:maximum 100.0
-        ] .
+        ] ;
+        rdfs:comment "stereo randomized delay lines"
+        .
