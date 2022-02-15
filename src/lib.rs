@@ -78,7 +78,7 @@ impl Walker {
             position: Bounds::new(-8000., -1.),
             acceleration: Bounds::new(-1., 1.),
             velocity: Bounds::new(-50., 50.),
-            acceleration_hold: 10,
+            acceleration_hold: 7000,
         }
     }
 
